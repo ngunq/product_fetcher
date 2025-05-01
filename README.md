@@ -2,9 +2,10 @@
 
 This is a Python application that fetches product data from the Poizon API and saves it as a JSON file. It uses `requests` for API calls, `python-dotenv` for environment variables, and `tkinter` for a simple GUI.
 
+This guide for macOS
+
 ## Prerequisites
 
-- macOS
 - Homebrew (for installing Python and ensuring Tkinter support)
 
 ## Setup Instructions
