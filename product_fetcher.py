@@ -30,7 +30,7 @@ total = 0
 lock = threading.Lock()
 
 # API Functions
-def fetch_product_list(brand_name, start_id=0, page_size=100, retries=3):
+def fetch_product_list(brand_name, start_id=0, page_size=100, retries=5):
     url = "https://openapi.dajisaas.com/poizon/product/queryList"
     params = {
         "appKey": app_key,
@@ -39,6 +39,7 @@ def fetch_product_list(brand_name, start_id=0, page_size=100, retries=3):
         "pageSize": page_size,
         "distBrandName": brand_name
     }
+    response = None
     for attempt in range(retries):
         try:
             response = requests.get(url, params=params, timeout=10)
@@ -54,7 +55,7 @@ def fetch_product_list(brand_name, start_id=0, page_size=100, retries=3):
                 raise Exception(f"Failed to fetch product list: {e}")
 
 # Asynchronous function to fetch a single product detail
-async def fetch_product_detail_async(session, dw_spu_id, retries=3):
+async def fetch_product_detail_async(session, dw_spu_id, retries=5):
     url = "https://openapi.dajisaas.com/poizon/product/queryDetail"
     params = {
         "appKey": app_key,
