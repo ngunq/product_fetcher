@@ -31,7 +31,7 @@ lock = threading.Lock()
 # API Functions
 
 
-def fetch_product_list(brand_name, start_id=0, page_size=100, retries=5):
+def fetch_product_list(brand_name, start_id=0, page_size=50, retries=5):
     url = "https://openapi.dajisaas.com/poizon/product/queryList"
     params = {
         "appKey": app_key,
