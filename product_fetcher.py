@@ -32,7 +32,8 @@ lock = threading.Lock()
 
 
 def fetch_product_list(brand_name, start_id=0, page_size=50, retries=5):
-    url = "https://openapi.dajisaas.com/poizon/product/queryList"
+    # url = "https://openapi.dajisaas.com/poizon/product/queryList"
+    url = "https://distopen.poizon.com/open/api/v1/distribute/product/querySpuList"
     params = {
         "appKey": app_key,
         "appSecret": app_secret,
@@ -57,7 +58,8 @@ def fetch_product_list(brand_name, start_id=0, page_size=50, retries=5):
 
 
 def fetch_product_detail(dw_spu_id, retries=5):
-    url = "https://openapi.dajisaas.com/poizon/product/queryDetail"
+    # url = "https://openapi.dajisaas.com/poizon/product/queryDetail"
+    url = "https://distopen.poizon.com/open/api/v1/distribute/product/querySkuInfo"
     params = {
         "appKey": app_key,
         "appSecret": app_secret,
