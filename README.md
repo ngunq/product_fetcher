@@ -75,8 +75,7 @@ Follow these steps to set up and run the application on macOS:
      ```
    - Edit `.env` and add your API keys (replace placeholders with actual values):
      ```
-     APP_KEY=your_app_key_here
-     APP_SECRET=your_app_secret_here
+     ACCESS_TOKEN=your_access_token_here
      ```
 
 7. **Run the application:**

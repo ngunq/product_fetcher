@@ -13,11 +13,10 @@ import os
 load_dotenv()
 
 # Get API keys
-app_key = os.getenv("APP_KEY")
-app_secret = os.getenv("APP_SECRET")
+access_token = os.getenv("ACCESS_TOKEN")
 
 # Check if keys are loaded
-if not app_key or not app_secret:
+if not access_token:
     keys_loaded = False
 else:
     keys_loaded = True
@@ -30,21 +29,22 @@ lock = threading.Lock()
 
 # API Functions
 
+headers = {
+    "access-token": access_token,
+    "Content-Type": "application/json"
+}
 
 def fetch_product_list(brand_name, start_id=0, page_size=50, retries=5):
-    # url = "https://openapi.dajisaas.com/poizon/product/queryList"
     url = "https://distopen.poizon.com/open/api/v1/distribute/product/querySpuList"
     params = {
-        "appKey": app_key,
-        "appSecret": app_secret,
         "startId": start_id,
         "pageSize": page_size,
-        "distBrandName": brand_name
+        "distBrandName": [e.strip() for e in brand_name.split(",")]
     }
     response = None
     for attempt in range(retries):
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.post(url, json=params, headers=headers, timeout=10)
             response.raise_for_status()
             return response.json()
         except RequestException as e:
@@ -58,17 +58,14 @@ def fetch_product_list(brand_name, start_id=0, page_size=50, retries=5):
 
 
 def fetch_product_detail(dw_spu_id, retries=5):
-    # url = "https://openapi.dajisaas.com/poizon/product/queryDetail"
     url = "https://distopen.poizon.com/open/api/v1/distribute/product/querySkuInfo"
     params = {
-        "appKey": app_key,
-        "appSecret": app_secret,
         "dwSpuId": dw_spu_id
     }
     response = None
     for attempt in range(retries):
         try:
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.post(url, headers=headers, json=params, timeout=10)
             response.raise_for_status()
             return response.json()
         except RequestException as e:
@@ -89,7 +86,7 @@ def get_product_ids_and_total(brand_name):
     start_id = 0
     total_count = None
     while True:
-        data = fetch_product_list(brand_name, start_id)
+        data = fetch_product_list(brand_name, start_id, page_size=200)
         if total_count is None:
             total_count = data['data']['total']
             # total_count = 100
