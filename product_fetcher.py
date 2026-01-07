@@ -57,66 +57,69 @@ def fetch_product_list(brand_name, start_id=0, page_size=50, retries=5):
                 raise Exception(f"Failed to fetch product list: {e}")
 
 
-def fetch_product_detail(dw_spu_id, retries=5):
-    url = "https://distopen.poizon.com/open/api/v1/distribute/product/querySkuInfo"
-    params = {
-        "dwSpuId": dw_spu_id
-    }
-    response = None
-    for attempt in range(retries):
-        try:
-            response = requests.post(url, headers=headers, json=params, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except RequestException as e:
-            if attempt < retries - 1:
-                wait_time = 2 ** attempt  # Exponential backoff
-                if response and response.status_code == 429:  # Rate limiting
-                    wait_time = max(wait_time, 5)
-                time.sleep(wait_time)
-            else:
-                raise Exception(
-                    f"Failed to fetch product detail for {dw_spu_id}: {e}")
+
 
 # Backend Logic
 
 
-def get_product_ids_and_total(brand_name):
-    product_ids = []
+def fetch_products_task(brand_name):
+    global completed, total, product_details
     start_id = 0
-    total_count = None
-    while True:
-        data = fetch_product_list(brand_name, start_id, page_size=200)
-        if total_count is None:
-            total_count = data['data']['total']
-            # total_count = 100
-        products = data['data']['spuList']
-        if not products:
-            break
-        product_ids.extend([product['dwSpuId'] for product in products])
-        start_id = products[-1]['id']  # Assuming 'id' is the pagination field
-        if len(product_ids) >= total_count:
-            break
-    return product_ids, total_count
+    total = 0
+    completed = 0
+    product_details = []
 
-
-def fetch_product_detail_wrapper(pid):
-    global completed
+    # Initial fetch to get total count
     try:
-        data = fetch_product_detail(pid)
-        with lock:
-            product_details.append(data)
-            completed += 1
+        data = fetch_product_list(brand_name, start_id, page_size=1)
+        if data and 'data' in data:
+            total = data['data']['total']
+            # Update UI with total immediately if possible, but update_progress handles it via global var
     except Exception as e:
-        print(f"Error: {e}")
-        with lock:
-            completed += 1  # Count as completed even if failed
+        status_label.config(text=f"Error: {e}")
+        return
+    
+    # Update UI after initial fetch
+    if total > 0:
+        progress_bar['maximum'] = total
+        status_label.config(text=f"Fetching details for {total} products...")
+        root.update()
+
+    if total == 0:
+        return
+
+    while True:
+        try:
+            data = fetch_product_list(brand_name, start_id, page_size=200)
+            if not data or 'data' not in data:
+                break
+                
+            products = data['data']['spuList']
+            if not products:
+                break
+                
+            with lock:
+                product_details.extend(products)
+                completed += len(products)
+            
+            start_id = products[-1]['id']
+            
+            if completed >= total:
+                break
+                
+        except Exception as e:
+            print(f"Error in fetch loop: {e}")
+            break
+        
+        # Update UI synchronously
+        if total > 0:
+            progress_bar['maximum'] = total
+        progress_bar['value'] = completed
+        status_label.config(text=f"Progress: {completed}/{total}")
+        root.update()
 
 
-def fetch_all_product_details(product_ids):
-    # Limit to 3 workers to respect rate limit of 3 requests/sec
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        executor.map(fetch_product_detail_wrapper, product_ids)
+
 
 # UI Functions
 
@@ -125,35 +128,25 @@ def start_fetching():
     global product_details, completed, total
     product_details = []
     completed = 0
+    total = 1 # Initialize to non-zero to prevent immediate completion trigger
+    
     brand_name = entry.get().strip()
     if not brand_name:
         status_label.config(text="Please enter a brand name.")
         return
+        
     status_label.config(text="Fetching product list...")
     start_button.config(state="disabled")
-    try:
-        product_ids, total = get_product_ids_and_total(brand_name)
-        progress_bar['maximum'] = total
-        status_label.config(text=f"Fetching details for {total} products...")
-        threading.Thread(target=fetch_all_product_details,
-                         args=(product_ids,), daemon=True).start()
-        update_progress()
-    except Exception as e:
-        print(e)
-        status_label.config(text=f"Error: {e}")
-        start_button.config(state="normal")
-
-
-def update_progress():
-    with lock:
-        progress_bar['value'] = completed
-        status_label.config(text=f"Progress: {completed}/{total}")
-    if completed < total:
-        root.after(100, update_progress)
-    else:
-        status_label.config(text="Fetching complete. Saving data...")
-        save_data()
-        start_button.config(state="normal")
+    
+    # Run fetching synchronously
+    root.update() # Ensure UI is updated before blocking
+    fetch_products_task(brand_name)
+    
+    # UI updates after fetching is done
+    status_label.config(text="Fetching complete. Saving data...")
+    root.update()
+    save_data()
+    start_button.config(state="normal")
 
 
 def save_data():
